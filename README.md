@@ -18,7 +18,7 @@ This is a Flask-based web application that translates text from English to a tar
 1. Clone the repository:
    ```bash
    git clone https://github.com/Prazeen7/Multilingual-Text-to-Speech-.git
-   cd Multilingual-Text-to-Speech-
+   cd Multilingual-Text-to-Speech
    ```
 2. Create a virtual environment and activate it:
    ```bash
