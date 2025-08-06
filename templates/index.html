@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech Translator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom animations for loading spinner */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        /* Smooth transitions for result display */
+        #result {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        #result.hidden {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        /* Custom button hover effects */
+        button:hover, a:hover {
+            transition: background-color 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="container max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-8">
+        <h1 class="text-4xl font-extrabold text-center text-gray-800 mb-8">Text-to-Speech Translator</h1>
+        <form id="translate-form" enctype="multipart/form-data" class="space-y-6">
+            <div>
+                <label for="input_text" class="block text-sm font-medium text-gray-700 mb-2">Enter Text to Translate</label>
+                <textarea 
+                    id="input_text" 
+                    name="input_text" 
+                    rows="6" 
+                    class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" 
+                    placeholder="Type or paste your text here..." 
+                    required
+                    aria-describedby="input_text_help"
+                ></textarea>
+                <p id="input_text_help" class="text-xs text-gray-500 mt-1">Enter the text you want to translate and convert to speech.</p>
+            </div>
+            <div>
+                <label for="audio_file" class="block text-sm font-medium text-gray-700 mb-2">Upload Audio Sample for Voice Cloning</label>
+                <input 
+                    type="file" 
+                    id="audio_file" 
+                    name="audio_file" 
+                    accept="audio/wav" 
+                    class="w-full border border-gray-300 rounded-lg p-3 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition duration-200" 
+                    required
+                    aria-describedby="audio_file_help"
+                >
+                <p id="audio_file_help" class="text-xs text-gray-500 mt-1">Upload a WAV file to clone the voice.</p>
+            </div>
+            <div>
+                <label for="target_language" class="block text-sm font-medium text-gray-700 mb-2">Select Target Language</label>
+                <select 
+                    id="target_language" 
+                    name="target_language" 
+                    class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" 
+                    required
+                >
+                    {% for code, name in languages.items() %}
+                        <option value="{{ code }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button 
+                type="submit" 
+                class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center"
+                id="submit-btn"
+            >
+                <span id="btn-text">Translate and Generate Speech</span>
+                <svg id="spinner" class="hidden w-5 h-5 ml-2 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </form>
+        <div id="result" class="mt-8 hidden">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Translated Text</h2>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <p id="translated-text" class="text-gray-700"></p>
+            </div>
+            <h2 class="text-2xl font-semibold text-gray-800 mt-6 mb-4">Generated Audio</h2>
+            <div class="flex items-center space-x-4">
+                <audio id="audio-player" controls class="w-full"></audio>
+                <a id="download-link" href="#" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-200">Download Audio</a>
+            </div>
+        </div>
+        <div id="error" class="mt-6 text-red-600 text-center hidden"></div>
+    </div>
+    <script>
+        const form = document.getElementById("translate-form");
+        const submitBtn = document.getElementById("submit-btn");
+        const btnText = document.getElementById("btn-text");
+        const spinner = document.getElementById("spinner");
+        const resultDiv = document.getElementById("result");
+        const errorDiv = document.getElementById("error");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            btnText.textContent = "Processing...";
+            spinner.classList.remove("hidden");
+            submitBtn.disabled = true;
+            resultDiv.classList.add("hidden");
+            errorDiv.classList.add("hidden");
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch("/", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.error) {
+                    errorDiv.textContent = data.error;
+                    errorDiv.classList.remove("hidden");
+                } else {
+                    document.getElementById("translated-text").textContent = data.translated_text;
+                    document.getElementById("audio-player").src = data.audio_url;
+                    document.getElementById("download-link").href = data.audio_url;
+                    resultDiv.classList.remove("hidden");
+                }
+            } catch (err) {
+                errorDiv.textContent = "An error occurred. Please try again.";
+                errorDiv.classList.remove("hidden");
+            } finally {
+                btnText.textContent = "Translate and Generate Speech";
+                spinner.classList.add("hidden");
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
