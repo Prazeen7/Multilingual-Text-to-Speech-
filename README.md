@@ -23,7 +23,7 @@ This is a Flask-based web application that translates text from English to a tar
 2. Create a virtual environment and activate it:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv/bin/activate 
    ```
 3. Install dependencies:
    ```bash
